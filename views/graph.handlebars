@@ -1,322 +1,197 @@
-<div id="eventlink" style="display:none">{{eventurl}}</div>
-<h3>{{title}}</h3>
-<div id="linkcount"></div>
-{{#if keyword}}
-{{keyword}}
-{{/if}}
-<div id="main">
-  <div id="info"></div>
-  <div id="canvas">
-    <svg></svg>
+<!-- Div containing status update for crawler -->
+<div class="text-center" id="crawlStatus">
+</div>
+
+<!-- Modal that displays when crawl is complete -->
+<div class="modal fade" id="crawlCompleteModal" tabindex="-1" role="dialog" aria-labelledby="crawlCompleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title bg-gradient-primary" id="modalTitle">Crawl Complete</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span class="white-text" aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body align-left">
+        <span id="linkcount"></span>
+		<span id="keywordfound"></span>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary modal-button" data-dismiss="modal">Okay</button>
+      </div>
+    </div>
   </div>
 </div>
+
+
+<div id="main">
+  <div class="container-fluid">
+	<div class="row">
+      <div class="col-xl-2 col-lg-4 col-md-4 d-none d-md-block">
+		<div class="well shadow p-3 mb-1 bg-white rounded h-100">
+          <form action='/submit' method='post' id="crawlerForm">
+            <div class="form-group">
+              <label for="url" class="required-field">URL</label><span class="question-icon" data-toggle="tooltip" title="URL to start the crawl from"><i class="fas fa-question-circle"></i></span>
+              <input class="form-control" required="" id='url' name='url' type="url" placeholder="http://www.yoururl.com" />
+			</div>
+            <div class="form-group">
+              <label for="keyword">Search Keyword</label><span class="question-icon" data-toggle="tooltip" title="Specify a keyword that will stop the crawl if found on a page"><i class="fas fa-question-circle"></i></span>
+              <input class="form-control" id='keyword' name='keyword' type="text" />
+			</div>
+            <div class="form-group">
+              <label class="required-field">Select Crawl Type</label><span class="question-icon" data-toggle="tooltip" title="Breadth-first: visits all links on each page
+Depth-first: visits a random link on each page"><i class="fas fa-question-circle"></i></span>
+              <div class="custom-control custom-radio">
+                <input class="custom-control-input" type="radio" required="" name="searchType" id="breadth" value="Breadth"
+                checked="checked" /> 
+                <label class="custom-control-label" for="breadth">Breadth First</label>
+			  </div>
+              <div class="custom-control custom-radio">
+                <input class="custom-control-input" type="radio" name="searchType" id="depth" value="Depth" /> 
+                <label class="custom-control-label" for="depth">Depth First</label>
+			  </div>
+            </div>
+              <div class="form-group" id="maxDepthChoice">
+                <label for="maxDepth" id="depthLabel" class="required-field">Depth (1 and 2)</label> <span class="question-icon" data-toggle="tooltip" title="Degrees of separation from the starting page"><i class="fas fa-question-circle"></i></span>
+                <input class="form-control" id='limit' name='limit' type="number" min='1' value='1' />
+			  </div>
+              <button type="submit" id="submitButton" class="btn btn-primary submit-button">Start Crawl</button>
+            </form>
+        </div>
+	  </div>
+	  
+      <div class="col-xl-8 col-lg-8 col-md-8 col-sm-12 col-xs-12">
+	    <div class="canvas well shadow p-3 mb-1 bg-white rounded h-100">
+		  <svg width="100%" height="100%">
+		    <defs>
+		  	  <radialGradient id="background-gradient" cx="70%" cy="100%" r="90%" fy="60%">
+				  <stop offset="5%" stop-color="#EEFFFF" />
+				  <stop offset="95%" stop-color="#DDEEFF" />
+			  </radialGradient>
+		    </defs>
+		    <rect id="background" width="100%" height="100%" fill="url(#background-gradient)" pointer-events="all" />
+		  </svg>
+	    </div>
+	  </div>
+		
+	  <div class="col-xl-2 d-none d-xl-block">
+		<div class="well shadow p-3 mb-1 bg-white rounded h-100" id="info">
+		  <div class="card shadow-sm p-3 mb-1 bg-white rounded">
+			<div>
+			  <h3>Site Details</h3>
+			</div>
+			<div>
+			  <div class="info-header"><p>Page Title</p></div>
+			  <div class="info" id="pageTitle">
+			    <p> </p>
+			  </div>
+			</div>
+			<div>
+			  <div class="info-header"><p>URL</p></div>
+				<div class="info" id="url">
+				  <p> </p>
+			  </div>
+			</div>
+		  </div>
+		  <div class="card shadow-sm p-3 mb-1 bg-white rounded">
+			<h4>Previous URL Searches</h4>
+			<ol>
+			  <div id="previousUrls" class="previous-urls">{{#each pastURLs}} 
+				<a href="javascript:;" class='previouslinks' onclick="fillForm({{json this}})" data-toggle="tooltip" data-placement="top" title="URL: {{this.url}}
+Keyword: {{this.keyword}}
+Search Type: {{this.searchtype}}
+Limit: {{this.limit}}">
+			      <li> {{this.url}} </li>
+				</a> {{/each}}
+			  </div>
+			</ol>
+			<button type="button" id="deleteHistory" class="btn btn-danger" onclick="deleteHistory()">Delete History</button>
+		  </div>
+		</div>
+	  </div>
+	</div>
+  </div>
+</div>
+
 <script type="text/javascript">
-  var link = document.getElementById("eventlink").innerHTML.replace(/&amp;/g, '&');
-  var source = new EventSource(link);
-
-  const data = {
-    nodes: [],
-    links: [],
-  }
-
-  const linkedByIndex = {};
-
-  // Create canvas for graph
-  const svgCanvas = d3.select('svg');
-  // Get width and height of window for canvas size
-  const width = window.innerWidth;
-  const height = window.innerHeight;
-
-  // Set container dimensions
-  svgCanvas
-    .attr('width', width)
-    .attr('height', height);
-
-  // Set colorScheme for the nodes
-  const nodeColor = d3.scaleOrdinal(d3.schemeSet2);
-  var shape = d3.scaleOrdinal(d3.symbols)
-
-  // Create D3 force instance --> controls all forces acting on graph
-  const graphSimulation = d3.forceSimulation();
-
-  // Create forces to act upon simulation
-  const linkForce = d3.forceLink().id(d => d.url).distance(125).strength(0.5);
-  const chargeForce = d3.forceManyBody().strength(-420);
-  const centerForce = d3.forceCenter(width / 2, height / 2);
-  const collisionForce = d3.forceCollide();
-
-  // Append forces to simulation instance
-  graphSimulation
-    .force('link', linkForce)
-    .force('center', centerForce)
-    .force('charge', chargeForce)
-  //.force('collision', collisionForce);
-
-  // Wrapper for all the elements within the graph
-  const graphWrapper = svgCanvas.append('g');
-
-
-  // Group for all links between nodes
-  let linkElements = graphWrapper.append('g')
-    .attr('class', 'links')
-    .selectAll('line')
-    .data(data.links)
-    .enter().append('line');
-
-  // Group for all nodes within graph
-  let nodeElements = graphWrapper.append('g')
-    .selectAll('path')
-    .data(data.nodes)
-    .enter().append('path')
-
-
-
-  // Build the graph
-  // If node contains the found keyword
-  nodeElements
-    .filter(d => d.keyword)
-    .attr('d', d3.symbol()
-      .type(d => d3.symbolStar)
-      .size(850))
-    .attr('class', 'star')
-    .attr('fill', d => nodeColor(d.group));
-
-  // If it is a node without a found keyword
-  nodeElements
-    .filter(d => !(d.keyword))
-    .attr('d', d3.symbol()
-      .type(d => d3.symbolCircle)
-      .size(325))
-    .attr('class', 'circle')
-    .attr('fill', d => nodeColor(d.group))
-
-  nodeElements
-    .on('click', d => window.open(d.url, '_blank'))
-    .on('mouseover.info', displayInfo)
-    .on('mouseover.fade', fade(.1))
-    .on('mouseover.increase', increaseNodeSize)
-    .on('mouseleave.fade', fade(1))
-    .on('mouseleave.decrease', decreaseNodeSize)
-    .call(d3.drag()
-      .on('start', dragStarted)
-      .on('drag', dragged)
-      .on('end', dragEnded))
-
-  svgCanvas.call(d3.zoom()
-    .on('zoom', zoomAction));
-
-
-  // Start the simulation
-  graphSimulation
-    .nodes(data.nodes)
-    .on('tick', tickAction);
-
-  graphSimulation
-    .force('link')
-    .links(data.links);
-
-  data.links.forEach(d => {
-    linkedByIndex[`${d.source.index},${d.target.index}`] = 1;
-  });
-
-  // Helper functions
-  function tickAction() {
-    linkElements
-      .attr('x1', d => d.source.x)
-      .attr('y1', d => d.source.y)
-      .attr('x2', d => d.target.x)
-      .attr('y2', d => d.target.y);
-    nodeElements
-      .attr('transform', function (d) { return 'translate(' + d.x + ',' + d.y + ')' });
-  }
-
-  function dragStarted(d) {
-    if (!d3.event.active) graphSimulation.alphaTarget(0.3).restart();
-    d.fx = d.x;
-    d.fy = d.y;
-  }
-
-  function dragged(d) {
-    d.fx = d3.event.x;
-    d.fy = d3.event.y;
-  }
-
-  function dragEnded(d) {
-    if (!d3.event.active) graphSimulation.alphaTarget(0);
-    d.fx = null;
-    d.fy = null;
-  }
-
-  //add on doubleclick listener to release nodes
-  function releaseNode(d) {
-    d.fx = null;
-    d.fy = null;
-  }
-
-  //Handles pan/zoom event for graph
-  function zoomAction() {
-    graphWrapper.attr('transform', d3.event.transform);
-  }
-
-  function displayInfo(d) {
-    const infoBox = d3.select('#info');
-    if (d.keyword) {
-      infoBox.html(`<h1>Keyword Found</h1>
-											<h2>Page Title: ${d.title}</h2>
-											<h3>URL: <span id="url">${d.url}</span></h3>`);
-    } else {
-      infoBox.html(`<h2>Page Title: ${d.title}</h2>
-										<h3>URL: <span id="url">${d.url}</span></h3>`);
-    }
-  }
-
-  function isConnected(a, b) {
-    return linkedByIndex[`${a.index},${b.index}`] || linkedByIndex[`${b.index},${a.index}`] || a.index === b.index;
-  }
-
-  function fade(opacity) {
-    return function (d) {
-      nodeElements.style('stroke-opacity', function (o) {
-        let thisOpacity = isConnected(d, o) ? 1 : opacity;
-        this.setAttribute('fill-opacity', thisOpacity);
-        this.setAttribute('stroke-width', '1px');
-        return thisOpacity;
-      });
-      linkElements.style('stroke-opacity', o => (o.source === d || o.target === d ? 1 : opacity));
-    };
-  }
-
-  function increaseNodeSize(d) {
-    const node = d3.select(this);
-    if (d.keyword) {
-      node
-        .transition()
-        .duration(500)
-        .attr('d', d3.symbol()
-          .type(d3.symbolStar)
-          .size(1750));
-    } else {
-      node
-        .transition()
-        .duration(500)
-        .attr('d', d3.symbol()
-          .type(d3.symbolCircle)
-          .size(1000));
-    }
-  }
-
-  function decreaseNodeSize(d) {
-    const node = d3.select(this);
-    if (d.keyword) {
-      node
-        .transition()
-        .duration(500)
-        .attr('d', d3.symbol()
-          .type(d3.symbolStar)
-          .size(850))
-    } else {
-      node
-        .transition()
-        .duration(500)
-        .attr('d', d3.symbol()
-          .type(d3.symbolCircle)
-          .size(325))
-    }
-  }
-
-  function update() {
-    linkElements = linkElements.data(data.links);
-    linkElements.exit().remove();
-    linkElements = linkElements.enter().append('line')
-      .attr('class', 'links')
-      .merge(linkElements);
-
-    nodeElements = nodeElements.data(data.nodes);
-    nodeElements.exit().remove();
-    nodeElements = nodeElements.enter().append('path')
-      .merge(nodeElements);
-
-    // If node contains the found keyword
-    nodeElements
-      .filter(d => d.keyword)
-      .attr('d', d3.symbol()
-        .type(d => d3.symbolStar)
-        .size(850))
-      .attr('class', 'star')
-      .attr('fill', d => nodeColor(d.group));
-
-    // If it is a node without a found keyword
-    nodeElements
-      .filter(d => !(d.keyword))
-      .attr('d', d3.symbol()
-        .type(d => d3.symbolCircle)
-        .size(325))
-      .attr('class', 'circle')
-      .attr('fill', d => nodeColor(d.group))
-
-    nodeElements
-      .on('click', d => window.open(d.url, '_blank'))
-      .on('mouseover.info', displayInfo)
-      .on('mouseover.fade', fade(.1))
-      .on('mouseover.increase', increaseNodeSize)
-      .on('mouseleave.fade', fade(1))
-      .on('mouseleave.decrease', decreaseNodeSize)
-      .call(d3.drag()
-        .on('start', dragStarted)
-        .on('drag', dragged)
-        .on('end', dragEnded))
-
-
-    svgCanvas.call(d3.zoom()
-      .on('zoom', zoomAction));
-
-    // Start the simulation
-    graphSimulation
-      .nodes(data.nodes)
-      .on('tick', tickAction);
-
-    graphSimulation
-      .force('link')
-      .links(data.links);
-
-    graphSimulation.alpha(.65).restart();
-  }
-
-  var numberOfLinks = 0;
-
-  // Listening to server for data
-  source.addEventListener('message', function (e) {
-    var link = JSON.parse(e.data);
-	
-	numberOfLinks = numberOfLinks + 1;
-	var paragraph = document.getElementById("linkcount");
-	paragraph.innerHTML = "Links Found: " + numberOfLinks;
-	if (numberOfLinks >= 300) {
-		paragraph.innerHTML = "Maximum number of links reached: " + numberOfLinks;
+	// Fill and submit form data
+	function fillForm(data) {
+		if (!$('#submitButton').is(":disabled")) {
+			$('#url').val(data.url);
+			if (data.keyword != '')
+				$('#keyword').val(data.keyword);
+			if (data.searchtype == 'Breadth')
+				$('#breadth').prop("checked", true);
+			else if (data.searchtype == 'Depth')
+				$('#depth').prop("checked", true);
+			$('#limit').val(data.limit);
+			
+			$('#crawlerForm').submit();
+		} 
+			
+		return false;
 	}
-    //console.log('Parsed graphData: ', link);
+	
+	// Async submit form data and generate graph
+	$('#crawlerForm').submit(function (e) {
+			e.preventDefault();
+			var data = $('form').serialize();
+			$.ajax({
+					url: "/submit",
+					type: 'POST',
+					data: data,
+					success: function(res) {
+						d3.selectAll("svg > *").remove();
+						createGraph(res.eventurl);
+					}
+			});
+		});
+	
+	// Delete cookie history stored on the page
+	function deleteHistory() {
+		$.ajax({
+			url: "/crawler",
+			type: 'DELETE',
+			success: function(res) {
+				$(".previous-urls a").html("");
+			}
+		});
+	}
+	
+	// Helper function to change depth values if outside acceptable range
+	function checkLimit() {
+	  var limit = document.getElementById("limit");
 
-    //Temporarily hold new nodes and links between nodes
-    const newNodes = [];
-    const newLinks = [];
+	  if (document.getElementById("breadth").checked && limit.value > {{ breadthLimit }}) {
+		limit.value = {{ breadthLimit }};
+	  } else if (document.getElementById("depth").checked && limit.value > {{ depthLimit }}) {
+		limit.value = {{ depthLimit }};
+	  }
+	}
 
-    //create node and link object that d3 understands
+	// Validate depth data
+	$("#limit").bind('keyup mouseup', function() {
+	  var limit = document.getElementById("limit");
 
-    newNodes.push({ title: link.title, url: link.url, group: link.group, keyword: link.keyword });
-    newLinks.push({ source: `${link.prevURL ? link.prevURL : link.url}`, target: link.url });
+	  if (limit.value < 1 && limit.value != '') {
+		limit.value = 1;
+	  }
 
-    //Add new data to old data
-    data.nodes = [...data.nodes, ...newNodes];
-    data.links = [...data.links, ...newLinks];
+	  checkLimit();
+	});
 
-    //call update to add new data to the graph
-    update();
+	// Change depth label to reflect range for breadth first search
+	$('#breadth').click(function() {
+	  var depthLabel = document.getElementById("depthLabel");
+	  depthLabel.innerHTML = 'Depth (1 and ' + {{ breadthLimit }} + ')';
+	  checkLimit();
+	});
 
-    //Add new link connections to linkedByIndex object
-    newLinks.forEach(link => { linkedByIndex[`${link.source.index},${link.target.index}`] = 1; });
-  }, false);
-  source.addEventListener('close', function (e) {
-    //update();
-    source.close();
-  }, false);
+	// Change depth label to reflect range for depth first search
+	$('#depth').click(function() {
+	  var depthLabel = document.getElementById("depthLabel");
+	  depthLabel.innerHTML = 'Depth (1 and ' + {{ depthLimit }} + ')';
+	  checkLimit();
+	});
+	
 </script>

@@ -1,9 +1,15 @@
 var express = require('express');
 
 var app = express();
+
+// helper that converts input to JSON
 var handlebars = require('express-handlebars').create({
-        defaultLayout: 'main'
+        defaultLayout: 'main',
+		helpers: {
+			json: function (context) { return JSON.stringify(context); },
+		}
     });
+	
 var bodyParser = require('body-parser');
 var session = require('express-session');
 var request = require('request');
@@ -12,7 +18,8 @@ var crypto = require("crypto");
 var Crawler = require('./crawler/crawler');
 var SSE = require('./crawler/sse');
 var Log = require('./crawler/log');
-const DEPTHLIMIT = 50;
+const DEPTH_LIMIT = 50;
+const BREADTH_LIMIT = 2;
 
 app.use(cookieParser());
 app.use(bodyParser.urlencoded({
@@ -27,10 +34,6 @@ app.engine('handlebars', handlebars.engine);
 app.set('view engine', 'handlebars');
 app.set('port', process.env.PORT || 80);
 
-function randomString() {
-    return "htt://" + crypto.randomBytes(10).toString('hex') + ".com";
-}
-
 app.get('/', function (req, res, next) {
     var context = {};
     context.title = "Crawl the Web from a Starting URL";
@@ -39,8 +42,9 @@ app.get('/', function (req, res, next) {
 
 app.get('/crawler', function (req, res, next) {
     var context = {};
-    context.title = "Crawl the Web from a Starting URL"
-        var pastURLs = [];
+    var pastURLs = [];
+	
+	// Store cookies of past crawls
     if (req.cookies && req.cookies["pastURLs"]) {
         pastURLs = req.cookies["pastURLs"];
     }
@@ -53,13 +57,17 @@ app.get('/crawler', function (req, res, next) {
                 "limit": x.maxDepth
             };
         });
-    var depthOptions = [];
-    for (let i = 1; i < DEPTHLIMIT; i++) {
-        depthOptions.push(i);
-    }
+
     context.depth = depthOptions;
     context.pastURLs = tmp;
-    res.render('crawler', context);
+	context.depthLimit = DEPTH_LIMIT;
+	context.breadthLimit = BREADTH_LIMIT;
+    res.render('graph', context);
+});
+
+app.delete('/crawler', function (req, res) {
+	res.clearCookie('pastURLs');
+	return res.sendStatus(200);
 });
 
 app.get('/previous', function (req, res, next) {
@@ -75,16 +83,14 @@ app.get('/previous', function (req, res, next) {
 });
 
 app.post('/submit', function (req, res, next) {
-    var context = {};
-    var limit = req.body.maxDepth;
-    if (req.body.searchType == 'Breadth')
-        limit = req.body.maxBreadth;
+	var context = {};
+    var limit = req.body.limit;
     var eventURL = "/stream?url=" + req.body.url + "&keyword=" + req.body.keyword + "&searchType=" + req.body.searchType + "&limit=" + limit;
     var given_url = req.body.url;
     var pastURLs = [];
     if (req.cookies["pastURLs"])
         pastURLs = [...req.cookies["pastURLs"]];
-    pastURLs.push({
+    pastURLs.unshift({
         "url": given_url,
         "keyword": req.body.keyword,
         "searchType": req.body.searchType,
@@ -96,7 +102,7 @@ app.post('/submit', function (req, res, next) {
     if (req.body.keyword && req.body.keyword.trim() != "") {
         context.keyword = "Keyword: " + req.body.keyword;
     }
-    res.render('graph', context);
+    res.send(context);
 });
 
 app.get('/about', function (req, res, next) {
@@ -132,13 +138,15 @@ app.get('/stream', function (req, res, next) {
             console.log('Crawl Complete.');
             setTimeout(function () {
                 sseConnection.end();
-            }, 10000);
+            }, 5000);
 
         });
     } else if (req.query.searchType == 'Depth') {
         crawler.depthFirst(url, limit, keyword).then(() => {
             console.log('Crawl Complete.');
-            sseConnection.end();
+            setTimeout(function () {
+                sseConnection.end();
+            }, 5000);
         });
     } else {
         sseConnection.end();
@@ -159,7 +167,6 @@ app.get('/:graph', function (req, res, next) {
         var pastURL = req.cookies.pastURLs[graph];
         context.searchType = pastURL.searchType;
         context.url = pastURL.url;
-        // context.links = pastURL.links;
         res.render('graph', context);
     } else {
         res.render('crawler', context);

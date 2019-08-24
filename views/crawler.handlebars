@@ -1,68 +1,174 @@
-<div class="container">
-	<h1>{{title}}</h1>
-  <div class="row">
-    <div class="col-md-4">
-      <form action='/submit' method='post'>
-        <div class="form-group">
-          <label for="url">URL</label>
-          <input class="form-control" required id='url' name = 'url' type="url" placeholder="http://yoururl.com">
-        </div>
-        <div class="form-group">
-          <label for="keyword">Search Keyword</label>
-          <input class="form-control" id='keyword' name = 'keyword' type="text" >
-        </div>
-				<div class="form-check form-check-inline">
-					<input class="form-check-input" onclick="breadthselected()" type="radio" required name="searchType" id="breadth" value="Breadth">
-					<label class="form-check-label" for="breadth">Breadth First Search</label>
-				</div>
-				<div class="form-check form-check-inline">
-					<input class="form-check-input" onclick="depthselected()" type="radio" name="searchType" id="depth" value="Depth">
-					<label class="form-check-label" for="depth">Depth First Search</label>
-				</div>
-        <div class="form-group" id="maxDepthChoice">
-          <label for="maxDepth">Max Depth for Depth First Search</label>
-          <select class="form-control" name="maxDepth" id="maxDepth">
-						{{#each depth}}
-            <option value='{{this}}'>{{this}}</option>
-						{{/each}}
-          </select>
-        </div>
-				<div class="form-group" id="maxBreadthChoice" style="display:none">
-          <label for="maxBreadth">Max Depth for Breadth First Search</label>
-          <select class="form-control" name="maxBreadth" id="maxBreadth">
-            <option value='1'>1</option>
-						<option value='2'>2</option>
-          </select>
-        </div>
+<html>
+  <head>
+    <meta name="generator"
+    content="HTML Tidy for HTML5 (experimental) for Windows https://github.com/w3c/tidy-html5/tree/c63cc39" />
+    <title></title>
+  </head>
+  <body>
+    <div class="container-fluid">
+      <h1>{{title}}</h1>
+      <div class="row">
+        <div class="col-sx-6 shadow p-3 mb-5 bg-white rounded">
 
-        <button type="submit" class="btn btn-primary">Submit</button>
-      </form>
+            <form action='/submit' method='post'>
+              <div class="form-group">
+              <label for="url" class="required-field">URL</label> 
+              <input class="form-control" required="" id='url' name='url' type="url" placeholder="http://www.yoururl.com" /></div>
+              <div class="form-group">
+              <label for="keyword">Search Keyword</label> 
+              <input class="form-control" id='keyword' name='keyword' type="text" /></div>
+              <div class="form-group">
+                <label class="required-field">Select Crawl Type</label>
+                <div class="custom-control custom-radio">
+                <input class="custom-control-input" type="radio" required="" name="searchType" id="breadth" value="Breadth"
+                checked="checked" /> 
+                <label class="custom-control-label" for="breadth">Breadth First</label></div>
+                <div class="custom-control custom-radio">
+                <input class="custom-control-input" type="radio" name="searchType" id="depth" value="Depth" /> 
+                <label class="custom-control-label" for="depth">Depth First</label></div>
+              </div>
+              <div class="form-group" id="maxDepthChoice">
+              <label for="maxDepth" id="depthLabel" class="required-field">Depth (between 1 and 2)</label> 
+              <input class="form-control" id='limit' name='limit' type="number" min='1' value='1' /></div>
+              <button type="submit" class="btn btn-primary submit-button">Start Crawl</button>
+            </form>
+
+
+            <h4>Prevous URL Searches</h4>
+            <div>{{#each pastURLs}} 
+            <a href='{{this.query}}' class='previouslinks'>
+              <div>
+              <div class="mainurl">
+              <b>URL</b> {{this.url}}</div>
+              <b>Keyword:</b> {{this.keyword}} 
+              <b>Searchtype:</b> {{this.searchtype}} 
+              <b>Limit:</b> {{this.limit}}</div>
+            </a> {{/each}}</div>
+
+        </div>
+		
+		<div class="col-sx-6 shadow p-3 mb-5 bg-white rounded" id="chart">
+			
+		
+      </div>
     </div>
-    <div class="col-md-8">
-			<h4>Prevous URL Searches</h4>
-			<div>
-		  {{#each pastURLs}}
-			<a href='{{this.query}}' class='previouslinks'>
-		    <div>
-					<div class="mainurl"><b>URL</b> {{this.url}}</div>
-					<b>Keyword:</b> {{this.keyword}} <b>Searchtype:</b> {{this.searchtype}} <b>Limit: </b>{{this.limit}}
-				</div>
-			</a>
-		  {{/each}}
-			</div>
-    </div>
-  </div>
-</div>
-<script>
-function breadthselected(){
-	var mdc = document.getElementById('maxDepthChoice');
-	mdc.style.display = "none";
-	var mbc = document.getElementById('maxBreadthChoice');
-	mbc.style.display ="block";
-}
-function depthselected(){
-	var mdc = document.getElementById('maxDepthChoice')
-	mdc.style.display = "block";
-	var mbc = document.getElementById('maxBreadthChoice')
-	mbc.style.display = "none";}
-</script>
+	
+    <script>
+		// Change depth values if outside acceptable range
+		function checkLimit() {
+		  var limit = document.getElementById("limit");
+
+		  if (document.getElementById("breadth").checked && limit.value > 2) {
+			limit.value = 2;
+		  } else if (document.getElementById("depth").checked && limit.value > 50) {
+			limit.value = 50;
+		  }
+		}
+
+		// Validate depth data
+		$("#limit").bind('keyup mouseup', function() {
+		  var limit = document.getElementById("limit");
+
+		  if (limit.value < 1 && limit.value != '') {
+			limit.value = 1;
+		  }
+
+		  checkLimit();
+		});
+
+		// Change depth label to reflect range for breadth first search
+		$('#breadth').click(function() {
+		  var depthLabel = document.getElementById("depthLabel");
+		  depthLabel.innerHTML = 'Depth (between 1 and 2)';
+		  checkLimit();
+		});
+
+		// Change depth label to reflect range for depth first search
+		$('#depth').click(function() {
+		  var depthLabel = document.getElementById("depthLabel");
+		  depthLabel.innerHTML = 'Depth (between 1 and 50)';
+		  checkLimit();
+		});
+
+		var margin = {
+		  top: 30,
+		  right: 20,
+		  bottom: 30,
+		  left: 50
+		};
+		var width = 600 - margin.left - margin.right;
+		var height = 270 - margin.top - margin.bottom;
+
+		var parseDate = d3.time.format("%d-%b-%y").parse;
+
+		var x = d3.time.scale().range([0, width]);
+		var y = d3.scale.linear().range([height, 0]);
+
+		var xAxis = d3.svg.axis().scale(x)
+		  .orient("bottom").ticks(5);
+
+		var yAxis = d3.svg.axis().scale(y)
+		  .orient("left").ticks(5);
+
+		var valueline = d3.svg.line()
+		  .x(function(d) {
+			return x(d.date);
+		  })
+		  .y(function(d) {
+			return y(d.close);
+		  });
+
+		var svg = d3.select("body")
+		  .append("svg")
+		  .attr("width", width + margin.left + margin.right)
+		  .attr("height", height + margin.top + margin.bottom)
+		  .append("g")
+		  .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+		// Get the data
+		var data = [{
+		  date: "1-May-12",
+		  close: "58.13"
+		}, {
+		  date: "30-Apr-12",
+		  close: "53.98"
+		}, {
+		  date: "27-Apr-12",
+		  close: "67.00"
+		}, {
+		  date: "26-Apr-12",
+		  close: "89.70"
+		}, {
+		  date: "25-Apr-12",
+		  close: "99.00"
+		}];
+
+		data.forEach(function(d) {
+		  d.date = parseDate(d.date);
+		  d.close = +d.close;
+		});
+
+		// Scale the range of the data
+		x.domain(d3.extent(data, function(d) {
+		  return d.date;
+		}));
+		y.domain([0, d3.max(data, function(d) {
+		  return d.close;
+		})]);
+
+		svg.append("path") // Add the valueline path.
+		  .attr("d", valueline(data));
+
+		svg.append("g") // Add the X Axis
+		  .attr("class", "x axis")
+		  .attr("transform", "translate(0," + height + ")")
+		  .call(xAxis);
+
+		svg.append("g") // Add the Y Axis
+		  .attr("class", "y axis")
+		  .call(yAxis);
+
+		var svg = d3.select("svg").append("svg");
+	</script>
+  </body>
+</html>

@@ -116,6 +116,16 @@ class Crawler {
         var regex = new RegExp('\\b' + this.keyword + '\\b', 'gi');
         return regex.test(text);
     }
+	
+    /**
+     * Gets favicon from website.
+     * @param {string} url - url of webpage to grab favicon from.
+     * @return {string} returns path to favicon.
+     */
+	getIcon(url) {
+		var path = url.split('/');
+		return path[0] + '//' + path[2] + '/favicon.ico';
+	}
 
     /**
      * Checks if URL link has a relative or absolute path.
@@ -235,6 +245,9 @@ class Crawler {
                         // Get title of webpage and strip of any tabs and new line characters
                         let title = $("title").text();
                         title = title.replace(/[\t\n\r]/g, '');
+						
+						// Get path to favicon
+						let icon = self.getIcon(url);
 
                         // Add to set of pages visited
                         self.pastURLs.add(url);
@@ -245,6 +258,7 @@ class Crawler {
                             prevURL: previousURL,
                             title: title,
                             keyword: keywordFound,
+							icon: icon,
                             group: group
                         };
 

@@ -58,7 +58,6 @@ app.get('/crawler', function (req, res, next) {
             };
         });
 
-    context.depth = depthOptions;
     context.pastURLs = tmp;
 	context.depthLimit = DEPTH_LIMIT;
 	context.breadthLimit = BREADTH_LIMIT;

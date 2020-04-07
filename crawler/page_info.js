@@ -26,12 +26,13 @@ class PageInfo {
 	}
 	
 	getInternalLinks() {
+		let self = this;
 		let allInternalLinks = new Set();
 		let relativeLinks = this.$("a[href^='/']");
 		
 		relativeLinks.each(function() {
-			let relativeLink = this.$(this).attr('href');
-			let internalLink = this._convertRelativeToAbsolute(relativeLink);
+			let relativeLink = self.$(this).attr('href');
+			let internalLink = self._convertRelativeToAbsolute(relativeLink);
 			allInternalLinks.add(internalLink);
 		});
 		
@@ -39,11 +40,12 @@ class PageInfo {
 	}
 	
 	getAbsoluteLinks() {
+		let self = this;
 		let allAbsoluteLinks = new Set();
 		let absoluteLinks = this.$("a[href^='http']");
 		
 		absoluteLinks.each(function() {
-			let absoluteLink = this.$(this).attr('href');
+			let absoluteLink = self.$(this).attr('href');
 			allAbsoluteLinks.add(absoluteLink);
 		});
 		
@@ -78,3 +80,5 @@ class PageInfo {
 		return pageInfo;
     }
 }
+
+module.exports = PageInfo;

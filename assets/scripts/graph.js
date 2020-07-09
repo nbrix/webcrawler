@@ -34,7 +34,7 @@ function createGraph(eventlink) {
     radialGradient.append("stop")
     .attr("offset", "95%")
     .attr("stop-color", "#DDEEFF");
-	
+
     d3.select('svg').append("rect")
     .attr("x", 0)
     .attr("y", 0)
@@ -306,11 +306,7 @@ function createGraph(eventlink) {
         var link = JSON.parse(e.data);
         numberOfLinks = numberOfLinks + 1;
 
-        if (!keywordFound) {
-            if (link.keyword) {
-                keywordFound = true;
-            }
-        }
+        keywordFound = link.keyword ? true : false;
 
         //Temporarily hold new nodes and links between nodes
         const newNodes = [];
@@ -392,6 +388,8 @@ function fillInModal(numberOfLinks, keywordFound) {
         } else {
             keywordInfo.innerHTML = "<br>Keyword Not Found";
         }
+    } else {
+        keywordInfo.innerHTML = "";
     }
 
 }
